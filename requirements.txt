@@ -1,0 +1,10 @@
+Flask==2.3.2
+werkzeug==2.3.7
+torch==2.0.1
+transformers==4.35.0
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+spacy==3.5.3
+PyMuPDF==1.22.5
+python-docx==0.8.11
+regex==2023.8.8

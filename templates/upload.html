@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Upload Document - DocIndexer{% endblock %}
+
+{% block content %}
+<h3>Upload Document</h3>
+<form method="POST" enctype="multipart/form-data" action="{{ url_for('upload') }}">
+    <div class="mb-3">
+        <label for="document" class="form-label">Choose Document (PDF, DOCX, TXT)</label>
+        <input type="file" name="document" class="form-control" id="document" accept=".pdf,.docx,.txt" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload</button>
+</form>
+{% endblock %}

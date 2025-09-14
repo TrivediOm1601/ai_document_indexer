@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Search Documents - DocIndexer{% endblock %}
+
+{% block content %}
+<h3>Search Documents</h3>
+<form method="POST" action="{{ url_for('search') }}" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="query" class="form-control" placeholder="Enter search query..." value="{{ request.form.get('query', '') }}" required>
+        <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+</form>
+
+{% if results is not none %}
+    {% if results %}
+    <h5>Search Results ({{ results|length }})</h5>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th><th>Category</th><th>Author</th><th>Similarity Score</th><th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc, score in results %}
+            <tr>
+                <td>{{ doc['title'] or doc['filename'] }}</td>
+                <td>{{ doc['category'] }}</td>
+                <td>{{ doc['author'] or '-' }}</td>
+                <td>{{ '%.3f'|format(score) }}</td>
+                <td><a href="{{ url_for('document', document_id=doc['id']) }}" class="btn btn-primary btn-sm">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No documents matched your query.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}
