@@ -10,15 +10,27 @@
         <strong>Category:</strong>
         <form method="POST" action="{{ url_for('update_category', document_id=document['id']) }}" class="d-inline-block ms-2">
             <select name="category" class="form-select d-inline-block w-auto" onchange="this.form.submit()">
-                <option value="Invoice" {% if document['category'] == 'Invoice' %}selected{% endif %}>Invoice</option>
-                <option value="Financial_Report" {% if document['category'] == 'Financial_Report' %}selected{% endif %}>Financial Report</option>
-                <option value="Contract" {% if document['category'] == 'Contract' %}selected{% endif %}>Contract</option>
-                <option value="Expense_Report" {% if document['category'] == 'Expense_Report' %}selected{% endif %}>Expense Report</option>
-                <option value="Resume" {% if document['category'] == 'Resume' %}selected{% endif %}>Resume</option>
-                <option value="Job_Description" {% if document['category'] == 'Job_Description' %}selected{% endif %}>Job Description</option>
-                <option value="Technical_Manual" {% if document['category'] == 'Technical_Manual' %}selected{% endif %}>Technical Manual</option>
-                <option value="Research_Paper" {% if document['category'] == 'Research_Paper' %}selected{% endif %}>Research Paper</option>
-                <option value="Non_Relevant" {% if document['category'] == 'Non_Relevant' %}selected{% endif %}>Non Relevant</option>
+                {% if role == 'admin' %}
+                    <option value="Invoice" {% if document['category'] == 'Invoice' %}selected{% endif %}>Invoice</option>
+                    <option value="Financial_Report" {% if document['category'] == 'Financial_Report' %}selected{% endif %}>Financial Report</option>
+                    <option value="Contract" {% if document['category'] == 'Contract' %}selected{% endif %}>Contract</option>
+                    <option value="Expense_Report" {% if document['category'] == 'Expense_Report' %}selected{% endif %}>Expense Report</option>
+                    <option value="Resume" {% if document['category'] == 'Resume' %}selected{% endif %}>Resume</option>
+                    <option value="Job_Description" {% if document['category'] == 'Job_Description' %}selected{% endif %}>Job Description</option>
+                    <option value="Technical_Manual" {% if document['category'] == 'Technical_Manual' %}selected{% endif %}>Technical Manual</option>
+                    <option value="Research_Paper" {% if document['category'] == 'Research_Paper' %}selected{% endif %}>Research Paper</option>
+                    <option value="Non_Relevant" {% if document['category'] == 'Non_Relevant' %}selected{% endif %}>Non Relevant</option>
+                {% elif role == 'hr' %}
+                    <option value="Resume" {% if document['category'] == 'Resume' %}selected{% endif %}>Resume</option>
+                    <option value="Job_Description" {% if document['category'] == 'Job_Description' %}selected{% endif %}>Job Description</option>
+                {% elif role == 'finance' %}
+                    <option value="Invoice" {% if document['category'] == 'Invoice' %}selected{% endif %}>Invoice</option>
+                    <option value="Contract" {% if document['category'] == 'Contract' %}selected{% endif %}>Contract</option>
+                    <option value="Financial_Report" {% if document['category'] == 'Financial_Report' %}selected{% endif %}>Financial Report</option>
+                    <option value="Expense_Report" {% if document['category'] == 'Expense_Report' %}selected{% endif %}>Expense Report</option>
+                {% else %}
+                    <option value="{{ document['category'] }}" selected>{{ document['category'] }}</option>
+                {% endif %}
             </select>
             <noscript><button type="submit" class="btn btn-primary btn-sm mt-1">Update</button></noscript>
         </form>

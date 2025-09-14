@@ -27,6 +27,13 @@ BROAD_TO_DETAILED = {
     'Legal': 'Contract',
     'Technical': 'Technical_Manual',
 }
+ROLE_TO_CATEGORIES = {
+    'admin': None,  # Admin sees all documents
+    'hr': ['Resume'],  
+    'finance': ['Invoice', 'Contract'],  
+    # Add other roles and their categories here
+}
+
 
 def init_db():
     conn = database.get_db_connection()
@@ -159,7 +166,7 @@ def create_app():
             if user and auth.verify_password(user['password'], password):
                 session['user_id'] = user['id']
                 session['username'] = user['username']
-                session['role'] = user['role']
+                session['role'] = user['role'].lower().strip()
                 return redirect(url_for('dashboard'))
             else:
                 flash('Invalid username or password', 'danger')
@@ -174,26 +181,30 @@ def create_app():
     @app.route('/document/<int:document_id>')
     @login_required
     def document(document_id):
+        user_role = session.get('role', '').lower()
+        allowed_categories = ROLE_TO_CATEGORIES.get(user_role)
+
         conn = database.get_db_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM documents WHERE id = ?', (document_id,))
         doc = cursor.fetchone()
+
         if not doc:
             conn.close()
             abort(404)
 
-        user_role = session.get('role')
-        if user_role != 'admin' and doc['category'].lower() != user_role.lower():
-            conn.close()
-            abort(403)
+        if user_role != 'admin':
+            # Deny access if document category not allowed for user role
+            if allowed_categories is None or doc['category'] not in allowed_categories:
+                conn.close()
+                abort(403)
 
-        # Log view action and close connection
-        cursor.execute('INSERT INTO access_logs (user_id, document_id, action, timestamp) VALUES (?, ?, ?, ?)',
-                       (session['user_id'], document_id, 'view', datetime.now()))
-        conn.commit()
         conn.close()
 
-        return render_template('document.html', document=doc)
+    # Pass the user role to template for role-based UI
+        return render_template('document.html', document=doc, role=user_role)
+
+
 
     SIMILARITY_THRESHOLD = 0.85  # Set your desired cutoff value
 
@@ -255,24 +266,53 @@ def create_app():
     @login_required
     def update_category(document_id):
         new_category = request.form.get('category')
-        allowed_categories = [
-            'Invoice', 'Financial_Report', 'Contract', 'Expense_Report', 'Resume', 'Job_Description',
-            'Technical_Manual', 'Research_Paper', 'Non_Relevant'
-        ]
+
+    # Allowed categories - keep consistent with your project categories
+        allowed_categories = ['Invoice', 'Resume', 'Contract', 'Technical Manual', 'Non_Relevant']
+
         if new_category not in allowed_categories:
             flash('Invalid category selected.', 'danger')
             return redirect(url_for('document', document_id=document_id))
 
+    # Optional: Check if logged-in user role permits changing to this category
+        user_role = session.get('role', '').lower()
+        ROLE_TO_CATEGORIES = {
+            'admin': None,
+            'hr': ['Resume'],
+            'finance': ['Invoice', 'Contract'],
+         }
+
+    # Admin can update to any category, others must be restricted
+        if user_role != 'admin':
+            allowed_for_role = ROLE_TO_CATEGORIES.get(user_role, [])
+            if allowed_for_role and new_category not in allowed_for_role:
+                flash('You are not authorized to set this category.', 'danger')
+                return redirect(url_for('document', document_id=document_id))
+
         conn = database.get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('UPDATE documents SET category = ? WHERE id = ?', (new_category, document_id))
+
+    # Fetch old category before update
         cursor.execute('SELECT category FROM documents WHERE id = ?', (document_id,))
-        old_category = cursor.fetchone()['category']
+        row = cursor.fetchone()
+        old_category = row['category'] if row else None
+
+    # Update with normalized category
+        def normalize_category(cat):
+            if not cat:
+                return None
+            return ' '.join(word.capitalize() for word in cat.strip().replace('_', ' ').split())
+
+        category_norm = normalize_category(new_category)
+
+        cursor.execute('UPDATE documents SET category = ? WHERE id = ?', (category_norm, document_id))
+
+    # Log correction for auditing
         cursor.execute('''
-        INSERT INTO document_corrections (document_id, old_category, corrected_category, corrected_by)
-        VALUES (?, ?, ?, ?)
-        ''', (document_id, old_category, new_category, session['user_id']))
-        
+            INSERT INTO document_corrections (document_id, old_category, corrected_category, corrected_by)
+            VALUES (?, ?, ?, ?)
+        ''', (document_id, old_category, category_norm, session['user_id']))
+
         conn.commit()
         conn.close()
 
@@ -283,16 +323,26 @@ def create_app():
     @app.route('/dashboard')
     @login_required
     def dashboard():
-        user_role = session.get('role')
+        user_role = session.get('role', '').lower()
+        allowed_categories = ROLE_TO_CATEGORIES.get(user_role)
+
         conn = database.get_db_connection()
         cursor = conn.cursor()
-        if user_role == 'admin':
+
+        if user_role == 'admin' or allowed_categories is None:
             cursor.execute('SELECT * FROM documents ORDER BY upload_date DESC')
         else:
-            cursor.execute('SELECT * FROM documents WHERE category = ? ORDER BY upload_date DESC', (user_role,))
+        # Normalize categories for query
+            categories_norm = [cat.strip() for cat in allowed_categories]
+            placeholders = ','.join('?' * len(categories_norm))
+            query = f'SELECT * FROM documents WHERE category IN ({placeholders}) ORDER BY upload_date DESC'
+            cursor.execute(query, tuple(categories_norm))
+
         documents = cursor.fetchall()
         conn.close()
+
         return render_template('dashboard.html', documents=documents, role=user_role, username=session.get('username'))
+
 
     return app
 
